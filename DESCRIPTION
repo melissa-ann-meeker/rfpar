@@ -1,0 +1,11 @@
+Package: rfpar
+Type: Package
+Title: What the package does (short line)
+Version: 1.0
+Date: 2022-03-24
+Author: Who wrote it
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: This is Melissa Meeker's code for the random forest algorithm with an option for CPU parallelization.
+License: What license is it under?
+Imports: Rcpp (>= 1.0.6), doParallel, foreach, parallel, RcppRoll
+LinkingTo: Rcpp, RcppArmadillo
