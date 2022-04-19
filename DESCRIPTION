@@ -9,3 +9,5 @@ Description: This is Melissa Meeker's code for the random forest algorithm with 
 License: What license is it under?
 Imports: Rcpp (>= 1.0.6), doParallel, foreach, parallel, RcppRoll
 LinkingTo: Rcpp, RcppArmadillo
+URL: https://github.com/melissa-ann-meeker/rfpar
+BugReports: https://github.com/melissa-ann-meeker/rfpar/issues
