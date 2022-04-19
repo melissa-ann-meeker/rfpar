@@ -17,9 +17,12 @@
 
 #function for random forest
 #outcome: a vector of the outcome values
-rf_cpp_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntrees = 100, nlevels = 5, min_node_size = 2, setseed = FALSE, binary_outcome = TRUE, n_cores = parallel::detectCores()-2){
+rf_cpp_par = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, nlevels = 5, min_node_size = 2, setseed = FALSE, binary_outcome = TRUE, n_cores = parallel::detectCores()-2){
 
   forest = list()
+  
+  training_outcome = outcome[training_set]
+  training_features = features[training_set,]
   
   if(binary_outcome){
     out_values = unique(outcome)
@@ -38,33 +41,59 @@ rf_cpp_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), 
   
   # Compute estimates
   i = NULL
-  estimates = foreach::foreach(i = 1:ntrees, .packages = "rfpar", .inorder = TRUE) %dopar% {
+  trees_in_order = FALSE
+  if(setseed){
+    trees_in_order = TRUE
+  }
+  
+  
+  estimates = foreach::foreach(i = 1:ntrees, .packages = "rfpar", .inorder = trees_in_order) %dopar% {
     RNGkind(sample.kind = "Rounding")
     if(setseed){    
       set.seed(i)
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     } else {
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     }
     
-    bag_outcome = outcome[bagged_sample]
-    bag_feats = features[bagged_sample,]
+    bag_outcome = training_outcome[bagged_sample]
+    bag_feats = training_features[bagged_sample,]
     
     
     if(binary_outcome){
-      forest[[i]] = generate_class_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
-      forest[[i]]$value = as.numeric(ifelse(forest[[i]]$value==0, out_values[1], out_values[2]))
+      tree = generate_class_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      tree[,"prediction_value"] = as.numeric(ifelse(tree[,"prediction_value"]==0, out_values[1], out_values[2]))
+      forest[[i]] = tree
     } else {
-      forest[[i]] = generate_reg_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      tree = generate_reg_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      forest[[i]] = tree
     }
+    
   }
+
+  if(binary_outcome){
+    errors = calculate_class_error_cpp(estimates, outcome, features, training_set, test_set)
+  } else {
+    errors = calculate_reg_error_cpp(estimates, outcome, features, training_set, test_set)
+  }
+
+  names(errors) = c("resubstitution", "test")
+
+  return_items = list(estimates, errors)
+  names(return_items) = c("forest", "errors")
   
-  return(estimates)
+  return(return_items)
 }
 
-rf_cpp = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntrees = 100, nlevels = 5, min_node_size = 2, setseed = FALSE, binary_outcome = TRUE){
+rf_cpp = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, nlevels = 5, min_node_size = 2, setseed = FALSE, binary_outcome = TRUE){
   RNGkind(sample.kind = "Rounding")
   forest = list()
+  
+  training_outcome = outcome[training_set]
+  training_features = features[training_set,]
+
   
   if(binary_outcome){
     out_values = unique(outcome)
@@ -72,28 +101,71 @@ rf_cpp = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntre
   }
   
   for(i in 1:ntrees){
-
+    
     if(setseed){
       set.seed(i)
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     } else {
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     }
-
-    bag_outcome = outcome[bagged_sample]
-    bag_feats = features[bagged_sample,]
-
-
+    
+    bag_outcome = training_outcome[bagged_sample]
+    bag_feats = training_features[bagged_sample,]
+    
+    
     if(binary_outcome){
-      forest[[i]] = generate_class_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
-      forest[[i]]$value = as.numeric(ifelse(forest[[i]]$value==0, out_values[1], out_values[2]))
+      tree = generate_class_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      tree[,"prediction_value"] = as.numeric(ifelse(tree[,"prediction_value"]==0, out_values[1], out_values[2]))
+      forest[[i]] = tree
     } else {
-      forest[[i]] = generate_reg_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      tree = generate_reg_tree_cpp(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      forest[[i]] = tree
     }
-
+    
   }
   
-  return(forest)
+  if(binary_outcome){
+    errors = calculate_class_error_cpp(forest, outcome, features, training_set, test_set)
+  } else {
+    errors = calculate_reg_error_cpp(forest, outcome, features, training_set, test_set)
+  }
+
+  names(errors) = c("resubstitution", "test")
+  
+  return_items = list(forest, errors)
+  names(return_items) = c("forest", "errors")
+  
+  return(return_items)
 }
 
+#######################################################################################################
+################################      CALCULATE ERRORS       ##########################################
+#######################################################################################################
 
+calculate_reg_error_cpp = function(forest, outcome, features, training, test){
+  predictions = predict_reg_cpp(forest, features)
+  
+  #Error 1: Resubstitution Estimation
+  e1 = mean((outcome[training]-predictions[training])^2)
+  
+  #Error 2: Test Sample Estimation
+  e2 = mean((outcome[test]-predictions[test])^2)
+  
+  return(c(e1,e2))
+}
+
+calculate_class_error_cpp = function(forest, outcome, features, training, test){
+  predictions = predict_class_cpp(forest, features)
+  
+  #Error 1: Resubstitution Estimation
+  accuracy1 = outcome[training]==predictions[training]
+  e1 = sum(accuracy1)/length(accuracy1)
+  
+  #Error 2: Test Sample Estimation
+  accuracy2 = outcome[test]==predictions[test]
+  e2 = sum(accuracy2)/length(accuracy2)
+  
+  return(c(e1,e2))
+}
