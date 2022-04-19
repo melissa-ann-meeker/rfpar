@@ -58,7 +58,12 @@ rf_r_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), nt
   
   # Compute estimates
   i = NULL
-  estimates = foreach::foreach(i = 1:ntrees, .packages = "rfpar", .inorder = TRUE) %dopar% {
+  trees_in_order = FALSE
+  if(setseed){
+    trees_in_order = TRUE
+  }
+  
+  estimates = foreach::foreach(i = 1:ntrees, .packages = "rfpar", .inorder = trees_in_order) %dopar% {
     RNGkind(sample.kind = "Rounding")
     if(setseed){    
       set.seed(i)
@@ -78,13 +83,16 @@ rf_r_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), nt
       forest[[i]] = generate_reg_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
     }
   }
-  return(forest)
+  return(estimates)
 }
   
   
-rf_r = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE){
+rf_r = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE){
   RNGkind(sample.kind = "Rounding")
   forest = list()
+  
+  training_outcome = outcome[training_set]
+  training_features = features[training_set,]
   
   if(binary_outcome){
     out_values = unique(outcome)
@@ -92,16 +100,15 @@ rf_r = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntrees
   }
   
   for(i in 1:ntrees){
-    
     if(setseed){
       set.seed(i)
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     } else {
-      bagged_sample = sample(c(1:nrow(features)), replace = TRUE, size = nrow(features))
+      bagged_sample = sample(c(1:nrow(training_features)), replace = TRUE, size = nrow(training_features))
     }
     
-    bag_outcome = outcome[bagged_sample]
-    bag_feats = features[bagged_sample,]
+    bag_outcome = training_outcome[bagged_sample]
+    bag_feats = training_features[bagged_sample,]
     
     
     if(binary_outcome){
@@ -143,20 +150,20 @@ make_reg_decision_rule_r = function(setseed, outcome, features, n_feats, seed, m
 
     bin = counts[1]
     while(bin<min_node_size){
-      splits = splits[2:length(splits)]
-      counts = counts[2:length(counts)]
+      splits = tail(splits, -1)
+      counts = tail(counts, -1)
       bin = bin+counts[1]
     }
-    
+
     if(length(splits)>0){
       bin = counts[length(counts)]
       while(bin<min_node_size){
-        splits = splits[1:(length(splits)-1)]
-        counts = counts[1:(length(counts)-1)]
+        splits = head(splits, -1)
+        counts = head(counts, -1)
         bin = bin+counts[length(counts)]
       }
     }
-    
+
     if(length(splits)>0){
       is_valid_feature[index] = TRUE
       splits_for_all_features[[index]] = splits
@@ -232,6 +239,8 @@ make_reg_decision_rule_r = function(setseed, outcome, features, n_feats, seed, m
   } else {
     best = rep(NA, times = 5)
   }
+  
+  
   return(best)
 }
 
@@ -262,7 +271,6 @@ generate_reg_tree_r = function(bagged_outcome, bagged_feats, n_feats, min_node_s
   #####################################
   
   build_reg_nodes_r = function(is_ch1){
-    #print(node_i)
     this_node = node_i
     set = which(sample_set[node_i,]==1)
     #print(sample_set[1:10,1:10])
@@ -366,16 +374,16 @@ make_class_decision_rule_r = function(setseed, outcome, features, n_feats, seed,
     
     bin = counts[1]
     while(bin<min_node_size){
-      splits = splits[2:length(splits)]
-      counts = counts[2:length(counts)]
+      splits = tail(splits, -1)
+      counts = tail(counts, -1)
       bin = bin+counts[1]
     }
     
     if(length(splits)>0){
       bin = counts[length(counts)]
       while(bin<min_node_size){
-        splits = splits[1:(length(splits)-1)]
-        counts = counts[1:(length(counts)-1)]
+        splits = head(splits, -1)
+        counts = head(counts, -1)
         bin = bin+counts[length(counts)]
       }
     }
