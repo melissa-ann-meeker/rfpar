@@ -27,16 +27,16 @@ arma::vec find_midpoints_cpp(const arma::vec x){
 
 // [[Rcpp::export]]
 double decision_cpp(DataFrame tree, int node, NumericVector observation){
-  node = node-1;
+  //node = node-1;
   NumericVector feature_splits = tree["feat_index"];
   int feature = feature_splits[node]-1;
   NumericVector split_values = tree["split_value"];
   double split = split_values[node];
-  NumericVector outcomes = tree["value"];
+  NumericVector outcomes = tree["prediction_value"];
   double value = outcomes[node];
   
-  NumericVector ch1 = tree["child1"];
-  NumericVector ch2 = tree["child2"];
+  NumericVector ch1 = tree["ch1"];
+  NumericVector ch2 = tree["ch2"];
   
   if(!Rcpp::NumericVector::is_na(value)){
     return value;
@@ -542,32 +542,32 @@ NumericMatrix generate_class_tree_cpp(const arma::vec& bagged_outcome, const arm
   return tree;
 }
 
-// [[Rcpp::export]]
-Rcpp::List generate_class_forest_cpp(const arma::vec& outcome, const arma::mat& features, int mtry, int ntrees, int min_node_size, bool setseed){
-  Rcpp::List forest(ntrees);
-  
-  int sample_size = features.n_rows;
-  Vector<INTSXP> bag(sample_size);
-  
-  for(int i=0; i<ntrees;i++){
-    
-    if(setseed){
-      set_seed_cpp(i+1);
-      bag = Rcpp::sample(sample_size, sample_size, true, R_NilValue, false);
-    } else{
-      bag = Rcpp::sample(sample_size, sample_size, true, R_NilValue, false);
-    }   
-    
-    arma::uvec bagged_sample= as<arma::uvec>(wrap(bag));
-    
-    arma::vec bag_outcome = outcome.elem(bagged_sample);
-    arma::mat bag_feats = features.rows(bagged_sample);
-    
-    forest[i] = generate_class_tree_cpp(bag_outcome, bag_feats, mtry, min_node_size = min_node_size, setseed = setseed);
-    
-  }
-  return forest;
-}
+// // [[Rcpp::export]]
+// Rcpp::List generate_class_forest_cpp(const arma::vec& outcome, const arma::mat& features, int mtry, int ntrees, int min_node_size, bool setseed){
+//   Rcpp::List forest(ntrees);
+//   
+//   int sample_size = features.n_rows;
+//   Vector<INTSXP> bag(sample_size);
+//   
+//   for(int i=0; i<ntrees;i++){
+//     
+//     if(setseed){
+//       set_seed_cpp(i+1);
+//       bag = Rcpp::sample(sample_size, sample_size, true, R_NilValue, false);
+//     } else{
+//       bag = Rcpp::sample(sample_size, sample_size, true, R_NilValue, false);
+//     }   
+//     
+//     arma::uvec bagged_sample= as<arma::uvec>(wrap(bag));
+//     
+//     arma::vec bag_outcome = outcome.elem(bagged_sample);
+//     arma::mat bag_feats = features.rows(bagged_sample);
+//     
+//     forest[i] = generate_class_tree_cpp(bag_outcome, bag_feats, mtry, min_node_size = min_node_size, setseed = setseed);
+//     
+//   }
+//   return forest;
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 //                        Prediction Functions                                //
