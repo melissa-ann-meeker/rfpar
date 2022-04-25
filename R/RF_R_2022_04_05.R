@@ -37,7 +37,7 @@ numeric_mode_r = function(v) {
 ################################     FOREST GENERATION       ##########################################
 #######################################################################################################
 
-rf_r_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE, n_cores = parallel::detectCores()-2){
+rf_r_par = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE, n_cores = parallel::detectCores()-2){
   
   forest = list()
   
@@ -77,13 +77,41 @@ rf_r_par = function(outcome, features, n_feats = floor(sqrt(ncol(features))), nt
     
     
     if(binary_outcome){
-      forest[[i]] = generate_class_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
-      forest[[i]]$value = as.numeric(ifelse(forest[[i]]$value==0, out_values[1], out_values[2]))
+      tree = generate_class_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      tree[,"prediction_value"] = as.numeric(ifelse(tree[,"prediction_value"]==0, out_values[1], out_values[2]))
+      forest[[i]] = tree
     } else {
-      forest[[i]] = generate_reg_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      tree = generate_reg_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      forest[[i]] = tree
     }
   }
-  return(estimates)
+  
+  
+  if(binary_outcome){
+    predictions = predict_class_cpp(estimates, features)
+  } else {
+    predictions = predict_reg_cpp(estimates, features)
+  }
+  
+  predictions = cbind(c(1:length(predictions)), predictions)
+  colnames(predictions) = c("observation", "obs_error")
+  
+  #Error 1: Resubstitution Estimation
+  e1 = mean((outcome[training_set]-predictions[training_set])^2)
+  
+  #Error 2: Test Sample Estimation
+  e2 = mean((outcome[test_set]-predictions[test_set])^2)
+  
+  errors = c(e1, e2)
+  
+  names(errors) = c("resubstitution", "test")
+  
+  return_items = list(estimates, predictions, errors)
+  names(return_items) = c("forest","predictions", "errors")
+  
+  return(return_items)
 }
   
   
@@ -112,15 +140,42 @@ rf_r = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(
     
     
     if(binary_outcome){
-      forest[[i]] = generate_class_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
-      forest[[i]]$value = as.numeric(ifelse(forest[[i]]$value==0, out_values[1], out_values[2]))
+      tree = generate_class_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      tree[,"prediction_value"] = as.numeric(ifelse(tree[,"prediction_value"]==0, out_values[1], out_values[2]))
+      forest[[i]] = tree
     } else {
-      forest[[i]] = generate_reg_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      tree = generate_reg_tree_r(bag_outcome, bag_feats, n_feats, min_node_size = min_node_size, setseed = setseed)
+      colnames(tree) = c("ch1", "ch2", "feat_index", "split_value", "weighted_impurity", "impurity_1", "impurity_2", "prediction_value", "is_predictive", "node_size", "isCh1")
+      forest[[i]] = tree
     }
     
   }
   
-  return(forest)
+  if(binary_outcome){
+    predictions = predict_class_cpp(forest, features)
+  } else {
+    predictions = predict_reg_cpp(forest, features)
+  }
+  
+  predictions = cbind(c(1:length(predictions)), predictions)
+  colnames(predictions) = c("observation", "obs_error")
+  
+  #Error 1: Resubstitution Estimation
+  e1 = mean((outcome[training_set]-predictions[training_set])^2)
+  
+  #Error 2: Test Sample Estimation
+  e2 = mean((outcome[test_set]-predictions[test_set])^2)
+  
+  errors = c(e1, e2)
+  
+  names(errors) = c("resubstitution", "test")
+  
+  return_items = list(forest, predictions, errors)
+  names(return_items) = c("forest","predictions", "errors")
+  
+  return(return_items)
+  
 }
 
 #######################################################################################################

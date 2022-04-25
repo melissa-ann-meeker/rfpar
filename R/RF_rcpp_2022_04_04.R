@@ -74,15 +74,28 @@ rf_cpp_par = function(outcome, features, training_set, test_set, n_feats = floor
   }
 
   if(binary_outcome){
-    errors = calculate_class_error_cpp(estimates, outcome, features, training_set, test_set)
+    predictions = predict_class_cpp(estimates, features)
+    #print(predictions)
   } else {
-    errors = calculate_reg_error_cpp(estimates, outcome, features, training_set, test_set)
+    predictions = predict_reg_cpp(estimates, features)
+    #print(predictions)
   }
-
+  
+  predictions = cbind(c(1:length(predictions)), predictions)
+  colnames(predictions) = c("observation", "obs_error")
+  
+  #Error 1: Resubstitution Estimation
+  e1 = mean((outcome[training_set]-predictions[training_set])^2)
+  
+  #Error 2: Test Sample Estimation
+  e2 = mean((outcome[test_set]-predictions[test_set])^2)
+  
+  errors = c(e1, e2)
+  
   names(errors) = c("resubstitution", "test")
-
-  return_items = list(estimates, errors)
-  names(return_items) = c("forest", "errors")
+  
+  return_items = list(estimates, predictions, errors)
+  names(return_items) = c("forest","predictions", "errors")
   
   return(return_items)
 }
@@ -127,45 +140,27 @@ rf_cpp = function(outcome, features, training_set, test_set, n_feats = floor(sqr
   }
   
   if(binary_outcome){
-    errors = calculate_class_error_cpp(forest, outcome, features, training_set, test_set)
+    predictions = predict_class_cpp(forest, features)
   } else {
-    errors = calculate_reg_error_cpp(forest, outcome, features, training_set, test_set)
+    predictions = predict_reg_cpp(forest, features)
   }
+  
+  predictions = cbind(c(1:length(predictions)), predictions)
+  colnames(predictions) = c("observation", "obs_error")
+  
+  #Error 1: Resubstitution Estimation
+  e1 = mean((outcome[training_set]-predictions[training_set])^2)
+  
+  #Error 2: Test Sample Estimation
+  e2 = mean((outcome[test_set]-predictions[test_set])^2)
+  
+  errors = c(e1, e2)
 
   names(errors) = c("resubstitution", "test")
   
-  return_items = list(forest, errors)
-  names(return_items) = c("forest", "errors")
+  return_items = list(forest, predictions, errors)
+  names(return_items) = c("forest","predictions", "errors")
   
   return(return_items)
 }
 
-#######################################################################################################
-################################      CALCULATE ERRORS       ##########################################
-#######################################################################################################
-
-calculate_reg_error_cpp = function(forest, outcome, features, training, test){
-  predictions = predict_reg_cpp(forest, features)
-  
-  #Error 1: Resubstitution Estimation
-  e1 = mean((outcome[training]-predictions[training])^2)
-  
-  #Error 2: Test Sample Estimation
-  e2 = mean((outcome[test]-predictions[test])^2)
-  
-  return(c(e1,e2))
-}
-
-calculate_class_error_cpp = function(forest, outcome, features, training, test){
-  predictions = predict_class_cpp(forest, features)
-  
-  #Error 1: Resubstitution Estimation
-  accuracy1 = outcome[training]==predictions[training]
-  e1 = sum(accuracy1)/length(accuracy1)
-  
-  #Error 2: Test Sample Estimation
-  accuracy2 = outcome[test]==predictions[test]
-  e2 = sum(accuracy2)/length(accuracy2)
-  
-  return(c(e1,e2))
-}
