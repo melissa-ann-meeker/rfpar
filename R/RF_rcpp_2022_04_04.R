@@ -75,20 +75,28 @@ rf_cpp_par = function(outcome, features, training_set, test_set, n_feats = floor
 
   if(binary_outcome){
     predictions = predict_class_cpp(estimates, features)
-    #print(predictions)
+    
+    #Error 1: Resubstitution Estimation
+    accuracy1 = outcome[training]==predictions[training]
+    e1 = sum(accuracy1)/length(accuracy1)
+    
+    #Error 2: Test Sample Estimation
+    accuracy2 = outcome[test]==predictions[test]
+    e2 = sum(accuracy2)/length(accuracy2)
+    
   } else {
     predictions = predict_reg_cpp(estimates, features)
-    #print(predictions)
+
+    #Error 1: Resubstitution Estimation
+    e1 = mean((outcome[training_set]-predictions[training_set])^2)
+    
+    #Error 2: Test Sample Estimation
+    e2 = mean((outcome[test_set]-predictions[test_set])^2)
   }
   
   predictions = cbind(c(1:length(predictions)), predictions)
   colnames(predictions) = c("observation", "obs_error")
-  
-  #Error 1: Resubstitution Estimation
-  e1 = mean((outcome[training_set]-predictions[training_set])^2)
-  
-  #Error 2: Test Sample Estimation
-  e2 = mean((outcome[test_set]-predictions[test_set])^2)
+
   
   errors = c(e1, e2)
   
@@ -141,18 +149,27 @@ rf_cpp = function(outcome, features, training_set, test_set, n_feats = floor(sqr
   
   if(binary_outcome){
     predictions = predict_class_cpp(forest, features)
+    
+    #Error 1: Resubstitution Estimation
+    accuracy1 = outcome[training]==predictions[training]
+    e1 = sum(accuracy1)/length(accuracy1)
+    
+    #Error 2: Test Sample Estimation
+    accuracy2 = outcome[test]==predictions[test]
+    e2 = sum(accuracy2)/length(accuracy2)
+    
   } else {
-    predictions = predict_reg_cpp(forest, features)
+    predictions = predict_reg_cpp(forest, features)  
+    
+    #Error 1: Resubstitution Estimation
+    e1 = mean((outcome[training_set]-predictions[training_set])^2)
+    
+    #Error 2: Test Sample Estimation
+    e2 = mean((outcome[test_set]-predictions[test_set])^2)
   }
   
   predictions = cbind(c(1:length(predictions)), predictions)
   colnames(predictions) = c("observation", "obs_error")
-  
-  #Error 1: Resubstitution Estimation
-  e1 = mean((outcome[training_set]-predictions[training_set])^2)
-  
-  #Error 2: Test Sample Estimation
-  e2 = mean((outcome[test_set]-predictions[test_set])^2)
   
   errors = c(e1, e2)
 
