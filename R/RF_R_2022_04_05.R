@@ -93,11 +93,11 @@ rf_r_par = function(outcome, features, training_set, test_set, n_feats = floor(s
     predictions = predict_class_cpp(estimates, features)
     
     #Error 1: Resubstitution Estimation
-    accuracy1 = outcome[training]==predictions[training]
+    accuracy1 = outcome[training_set]==predictions[training_set]
     e1 = sum(accuracy1)/length(accuracy1)
     
     #Error 2: Test Sample Estimation
-    accuracy2 = outcome[test]==predictions[test]
+    accuracy2 = outcome[test_set]==predictions[test_set]
     e2 = sum(accuracy2)/length(accuracy2)
     
   } else {
@@ -166,11 +166,11 @@ rf_r = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(
     predictions = predict_class_cpp(forest, features)
     
     #Error 1: Resubstitution Estimation
-    accuracy1 = outcome[training]==predictions[training]
+    accuracy1 = outcome[training_set]==predictions[training_set]
     e1 = sum(accuracy1)/length(accuracy1)
     
     #Error 2: Test Sample Estimation
-    accuracy2 = outcome[test]==predictions[test]
+    accuracy2 = outcome[test_set]==predictions[test_set]
     e2 = sum(accuracy2)/length(accuracy2)
     
   } else {
