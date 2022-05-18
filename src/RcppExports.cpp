@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // rcpparma_hello_world
 arma::mat rcpparma_hello_world();
 RcppExport SEXP _rfpar_rcpparma_hello_world() {
@@ -226,22 +231,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// generate_class_forest_cpp
-Rcpp::List generate_class_forest_cpp(const arma::vec& outcome, const arma::mat& features, int mtry, int ntrees, int min_node_size, bool setseed);
-RcppExport SEXP _rfpar_generate_class_forest_cpp(SEXP outcomeSEXP, SEXP featuresSEXP, SEXP mtrySEXP, SEXP ntreesSEXP, SEXP min_node_sizeSEXP, SEXP setseedSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type outcome(outcomeSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type features(featuresSEXP);
-    Rcpp::traits::input_parameter< int >::type mtry(mtrySEXP);
-    Rcpp::traits::input_parameter< int >::type ntrees(ntreesSEXP);
-    Rcpp::traits::input_parameter< int >::type min_node_size(min_node_sizeSEXP);
-    Rcpp::traits::input_parameter< bool >::type setseed(setseedSEXP);
-    rcpp_result_gen = Rcpp::wrap(generate_class_forest_cpp(outcome, features, mtry, ntrees, min_node_size, setseed));
-    return rcpp_result_gen;
-END_RCPP
-}
 // predict_class_cpp
 NumericVector predict_class_cpp(List forest, NumericMatrix train);
 RcppExport SEXP _rfpar_predict_class_cpp(SEXP forestSEXP, SEXP trainSEXP) {
@@ -273,7 +262,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rfpar_make_class_decision_rule_cpp", (DL_FUNC) &_rfpar_make_class_decision_rule_cpp, 6},
     {"_rfpar_build_class_nodes_cpp", (DL_FUNC) &_rfpar_build_class_nodes_cpp, 9},
     {"_rfpar_generate_class_tree_cpp", (DL_FUNC) &_rfpar_generate_class_tree_cpp, 5},
-    {"_rfpar_generate_class_forest_cpp", (DL_FUNC) &_rfpar_generate_class_forest_cpp, 6},
     {"_rfpar_predict_class_cpp", (DL_FUNC) &_rfpar_predict_class_cpp, 2},
     {NULL, NULL, 0}
 };

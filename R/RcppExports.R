@@ -69,10 +69,6 @@ generate_class_tree_cpp <- function(bagged_outcome, bagged_feats, n_feats, min_n
     .Call(`_rfpar_generate_class_tree_cpp`, bagged_outcome, bagged_feats, n_feats, min_node_size, setseed)
 }
 
-generate_class_forest_cpp <- function(outcome, features, mtry, ntrees, min_node_size, setseed) {
-    .Call(`_rfpar_generate_class_forest_cpp`, outcome, features, mtry, ntrees, min_node_size, setseed)
-}
-
 predict_class_cpp <- function(forest, train) {
     .Call(`_rfpar_predict_class_cpp`, forest, train)
 }

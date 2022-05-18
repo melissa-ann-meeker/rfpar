@@ -39,6 +39,8 @@ numeric_mode_r = function(v) {
 
 rf_r_par = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE, n_cores = parallel::detectCores()-2){
   
+  is_training = c(1:length(outcome)) %in% training_set
+  
   forest = list()
   
   if(binary_outcome){
@@ -92,40 +94,49 @@ rf_r_par = function(outcome, features, training_set, test_set, n_feats = floor(s
   if(binary_outcome){
     predictions = predict_class_cpp(estimates, features)
     
+    #Accuracy is calculated as if the predicted outcome equals the true outcome
+    accuracy = outcome == predictions
+    
     #Error 1: Resubstitution Estimation
-    accuracy1 = outcome[training_set]==predictions[training_set]
+    accuracy1 = accuracy[training_set]
     e1 = sum(accuracy1)/length(accuracy1)
     
     #Error 2: Test Sample Estimation
-    accuracy2 = outcome[test_set]==predictions[test_set]
+    accuracy2 = accuracy[test_set]
     e2 = sum(accuracy2)/length(accuracy2)
     
   } else {
     predictions = predict_reg_cpp(estimates, features)
     
+    #Accuracy is calculated as square error
+    accuracy = (outcome-predictions)^2
+    
     #Error 1: Resubstitution Estimation
-    e1 = mean((outcome[training_set]-predictions[training_set])^2)
+    e1 = mean(accuracy[training_set])
     
     #Error 2: Test Sample Estimation
-    e2 = mean((outcome[test_set]-predictions[test_set])^2)
+    e2 = mean(accuracy[test_set])
   }
   
-  predictions = cbind(c(1:length(predictions)), predictions)
-  colnames(predictions) = c("observation", "obs_error")
+  accuracy = cbind(c(1:length(accuracy)), is_training, accuracy)
+  colnames(accuracy) = c("observation", "is_training", "accuracy")
   
   
   errors = c(e1, e2)
   
   names(errors) = c("resubstitution", "test")
   
-  return_items = list(estimates, predictions, errors)
-  names(return_items) = c("forest","predictions", "errors")
+  return_items = list(estimates, accuracy, errors)
+  names(return_items) = c("forest","accuracy", "errors")
   
   return(return_items)
 }
   
   
 rf_r = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(ncol(features))), ntrees = 100, min_node_size = 5, setseed = FALSE, binary_outcome = TRUE){
+  
+  is_training = c(1:length(outcome)) %in% training_set
+  
   RNGkind(sample.kind = "Rounding")
   forest = list()
   
@@ -165,33 +176,40 @@ rf_r = function(outcome, features, training_set, test_set, n_feats = floor(sqrt(
   if(binary_outcome){
     predictions = predict_class_cpp(forest, features)
     
+    #Accuracy is calculated as if the predicted outcome equals the true outcome
+    accuracy = outcome == predictions
+    
     #Error 1: Resubstitution Estimation
-    accuracy1 = outcome[training_set]==predictions[training_set]
+    accuracy1 = accuracy[training_set]
     e1 = sum(accuracy1)/length(accuracy1)
     
     #Error 2: Test Sample Estimation
-    accuracy2 = outcome[test_set]==predictions[test_set]
+    accuracy2 = accuracy[test_set]
     e2 = sum(accuracy2)/length(accuracy2)
     
   } else {
-    predictions = predict_reg_cpp(forest, features)  
+    predictions = predict_reg_cpp(forest, features)
+    
+    #Accuracy is calculated as square error
+    accuracy = (outcome-predictions)^2
     
     #Error 1: Resubstitution Estimation
-    e1 = mean((outcome[training_set]-predictions[training_set])^2)
+    e1 = mean(accuracy[training_set])
     
     #Error 2: Test Sample Estimation
-    e2 = mean((outcome[test_set]-predictions[test_set])^2)
+    e2 = mean(accuracy[test_set])
   }
   
-  predictions = cbind(c(1:length(predictions)), predictions)
-  colnames(predictions) = c("observation", "obs_error")
+  accuracy = cbind(c(1:length(accuracy)), is_training, accuracy)
+  colnames(accuracy) = c("observation", "is_training", "accuracy")
+  
   
   errors = c(e1, e2)
   
   names(errors) = c("resubstitution", "test")
   
-  return_items = list(forest, predictions, errors)
-  names(return_items) = c("forest","predictions", "errors")
+  return_items = list(forest, accuracy, errors)
+  names(return_items) = c("forest","accuracy", "errors")
   
   return(return_items)
   
